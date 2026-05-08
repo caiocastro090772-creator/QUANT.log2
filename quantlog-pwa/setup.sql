@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>QUANT.LOG</title>
+<meta name="theme-color" content="#0e1320"/>
+<meta name="description" content="Controle de performance operacional com calendário, banca e relatórios salvos na nuvem."/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="QUANT.LOG"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png"/>
+<link rel="apple-touch-icon" href="./icons/icon-192.png"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "tertiary-fixed-dim": "#bfc6dd",
+        "on-primary-fixed": "#00210c",
+        "on-surface-variant": "#c6c6cc",
+        "primary-container": "#00250f",
+        "surface-container": "#1a1f2c",
+        "background": "#0e1320",
+        "on-primary-container": "#009b50",
+        "surface-container-high": "#252a37",
+        "tertiary-container": "#181f30",
+        "primary": "#4ae183",
+        "surface-variant": "#303442",
+        "tertiary": "#bfc6dd",
+        "secondary-fixed-dim": "#ffb961",
+        "secondary": "#ffb961",
+        "surface": "#0e1320",
+        "on-surface": "#dee2f4",
+        "on-error-container": "#ffdad6",
+        "on-primary": "#003919",
+        "outline-variant": "#45464c",
+        "surface-container-low": "#161b28",
+        "surface-bright": "#343947",
+        "surface-dim": "#0e1320",
+        "error": "#ffb4ab",
+        "on-background": "#dee2f4",
+        "secondary-container": "#e89300",
+        "outline": "#909096",
+        "on-tertiary-container": "#80869c",
+        "surface-container-highest": "#303442",
+        "on-tertiary": "#293042",
+        "primary-fixed": "#6bfe9c",
+        "surface-container-lowest": "#090e1a",
+        "surface-tint": "#4ae183",
+        "error-container": "#93000a",
+        "on-secondary": "#472a00",
+      },
+      fontFamily: {
+        "headline": ["Space Grotesk"],
+        "body": ["Inter"],
+        "label": ["Inter"]
+      },
+      borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+    },
+  },
+}
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  body { font-family: 'Inter', sans-serif; background: #0e1320; color: #dee2f4; }
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .screen { display: none; min-height: 100dvh; }
+  .screen.active { display: block; }
+  .editable-value {
+    background: transparent; border: none;
+    border-bottom: 1px dashed rgba(74, 225, 131, 0.3);
+    color: inherit; font-family: inherit; font-size: inherit;
+    font-weight: inherit; width: 100%; outline: none; transition: border-color 0.2s;
+  }
+  .editable-value:focus {
+    border-bottom-color: #4ae183;
+    background: rgba(74, 225, 131, 0.05); border-radius: 4px;
+  }
+  #toast {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1f2c; border: 1px solid rgba(74, 225, 131, 0.3);
+    color: #4ae183; padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; z-index: 1000;
+    opacity: 0; transition: all 0.3s ease; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .cal-day { cursor: pointer; transition: all 0.15s; }
+  .cal-day:hover { transform: scale(1.05); }
+  #dayModal {
+    position: fixed; inset: 0; background: rgba(9, 14, 26, 0.85);
+    backdrop-filter: blur(8px); z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  #dayModal.open { opacity: 1; pointer-events: all; }
+  .nav-active { color: #4ae183 !important; position: relative; }
+  .nav-active::before {
+    content: ''; position: absolute; top: -8px; left: 50%;
+    transform: translateX(-50%); width: 32px; height: 2px;
+    background: #ffb961; border-radius: 2px;
+  }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  input, textarea, select { font-family: 'Inter', sans-serif; }
+  .status-toggle { background: rgba(22,27,40,0.8); border-color: rgba(69,70,76,0.4); color: #80869c; }
+  .install-btn {
+    position: fixed; right: 16px; bottom: 92px; z-index: 70;
+    display: none; align-items: center; gap: 10px;
+    border: none; border-radius: 999px; padding: 12px 16px;
+    font-weight: 700; color: #003919;
+    background: linear-gradient(135deg,#4ae183,#009b50);
+    box-shadow: 0 12px 32px rgba(74,225,131,0.28);
+  }
+  .install-btn.show { display: inline-flex; }
+  .install-btn:active { transform: scale(0.98); }
+
+  /* ===== LOGIN SCREEN ===== */
+  #screen-login {
+    min-height: 100dvh; display: flex; align-items: center;
+    justify-content: center; padding: 24px;
+    background: #0e1320;
+  }
+  #screen-login.hidden { display: none; }
+  .login-card {
+    width: 100%; max-width: 360px; text-align: center;
+  }
+  .google-btn {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    width: 100%; padding: 14px 20px; border-radius: 12px;
+    background: #fff; color: #1a1a1a; font-weight: 700;
+    font-size: 15px; border: none; cursor: pointer;
+    transition: all 0.2s; font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .google-btn:hover { background: #f0f0f0; transform: translateY(-1px); }
+  .google-btn:active { transform: scale(0.98); }
+  .google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  /* Loading overlay */
+  #loadingOverlay {
+    position: fixed; inset: 0; background: #0e1320;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.4s;
+  }
+  #loadingOverlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid rgba(74,225,131,0.2);
+    border-top-color: #4ae183; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* User avatar in header */
+  .user-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    overflow: hidden; background: #1a1f2c;
+    border: 1.5px solid rgba(74,225,131,0.3);
+  }
+  .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+</style>
+</head>
+<body class="bg-background text-on-background">
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="screen-login" class="hidden">
+  <div class="login-card">
+    <div class="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style="background:linear-gradient(135deg,#4ae183,#009b50)">
+      <span class="material-symbols-outlined text-3xl" style="color:#003919;font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24">account_balance_wallet</span>
+    </div>
+    <h1 class="font-headline font-bold text-3xl text-white mb-2 tracking-tight">QUANT.LOG</h1>
+    <p class="text-on-tertiary-container text-sm mb-10">Controle sua performance de trading</p>
+
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Entrar com Google
+    </button>
+
+    <p class="text-on-tertiary-container text-xs mt-6">Seus dados ficam salvos na nuvem e funcionam em qualquer dispositivo</p>
+  </div>
+</div>
+
+<button id="installAppBtn" class="install-btn" type="button">
+  <span class="material-symbols-outlined text-[20px]">download</span>
+  Instalar app
+</button>
+
+<div id="toast">✓ Salvo</div>
+
+<!-- ===== WELCOME MODAL ===== -->
+<div id="welcomeModal" style="position:fixed;inset:0;background:rgba(9,14,26,0.97);z-index:500;display:none;align-items:center;justify-content:center;padding:24px;transition:opacity 0.4s;">
+  <div class="w-full max-w-xs text-center">
+    <div class="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style="background:linear-gradient(135deg,#4ae183,#009b50)">
+      <span class="material-symbols-outlined text-3xl" style="color:#003919;font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24">account_balance_wallet</span>
+    </div>
+    <h2 class="font-headline font-bold text-2xl text-white mb-2">Bem-vindo ao QUANT.LOG</h2>
+    <p class="text-on-tertiary-container text-sm mb-8">Para começar, informe o valor da sua banca inicial de trading.</p>
+    <div class="bg-surface-container rounded-xl px-4 py-3 flex items-center gap-2 mb-3 text-left">
+      <span class="text-on-surface-variant font-bold text-lg">R$</span>
+      <input id="welcomeInput" type="number" step="0.01" min="0" inputmode="decimal"
+        placeholder="0,00"
+        class="bg-transparent text-3xl font-headline font-bold text-primary border-none outline-none w-full tabular-nums placeholder:text-on-surface-variant/30"/>
+    </div>
+    <p class="text-[10px] text-on-tertiary-container mb-6 tracking-wider">Você pode alterar isso a qualquer momento</p>
+    <button onclick="saveWelcome()"
+      class="w-full py-4 rounded-xl font-headline font-bold text-base active:scale-95 transition-all"
+      style="background:linear-gradient(135deg,#4ae183,#009b50);color:#003919;box-shadow:0 8px 32px rgba(74,225,131,0.25)">
+      COMEÇAR
+    </button>
+  </div>
+</div>
+
+<!-- ===== BALANCE EDIT MODAL ===== -->
+<div id="balanceModal" style="position:fixed;inset:0;background:rgba(9,14,26,0.85);backdrop-filter:blur(8px);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s;">
+  <div class="bg-surface-container rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden" style="box-shadow:0 32px 64px rgba(0,0,0,0.6);transform:translateY(16px);transition:transform 0.2s;" id="balanceModalCard">
+    <div class="px-5 pt-5 pb-3 flex items-center justify-between">
+      <div>
+        <p class="text-on-tertiary-container text-[10px] uppercase tracking-widest font-bold">Banca atual</p>
+        <h3 class="font-headline font-bold text-lg text-white mt-0.5">Editar saldo</h3>
+      </div>
+      <button onclick="closeBalanceEdit()" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-white transition-colors">
+        <span class="material-symbols-outlined text-sm">close</span>
+      </button>
+    </div>
+    <div class="px-5 pb-4">
+      <div class="bg-surface-container-low rounded-xl px-4 py-3 flex items-center gap-2">
+        <span class="text-on-surface-variant font-bold text-lg">R$</span>
+        <input id="balanceInput" type="number" step="0.01" min="0" inputmode="decimal"
+          placeholder="0,00"
+          class="bg-transparent text-3xl font-headline font-bold text-primary border-none outline-none w-full tabular-nums placeholder:text-on-surface-variant/30"/>
+      </div>
+    </div>
+    <div class="px-5 pb-5">
+      <button onclick="saveBalanceEdit()"
+        class="w-full py-4 rounded-xl font-headline font-bold text-base active:scale-95 transition-all"
+        style="background:linear-gradient(135deg,#4ae183,#009b50);color:#003919;box-shadow:0 8px 24px rgba(74,225,131,0.2)">
+        SALVAR BANCA
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DAY EDIT MODAL ===== -->
+<div id="dayModal">
+  <div class="bg-surface-container rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" style="box-shadow:0 32px 64px rgba(0,0,0,0.6)">
+    <div class="flex items-center justify-between px-5 pt-5 pb-3">
+      <div>
+        <h3 class="font-headline font-bold text-xl text-white" id="modalDayTitle">Dia 11</h3>
+        <p class="text-xs text-on-tertiary-container mt-0.5" id="modalDayWeekday">Segunda-feira</p>
+      </div>
+      <button onclick="closeDayModal()" class="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-white transition-colors">
+        <span class="material-symbols-outlined text-sm">close</span>
+      </button>
+    </div>
+    <div class="grid grid-cols-2 gap-2 px-5 pb-4">
+      <button onclick="setModalStatus('profit')" id="btn-profit"
+        class="status-toggle flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 border-2">
+        <span class="material-symbols-outlined text-base">trending_up</span> Positivo
+      </button>
+      <button onclick="setModalStatus('loss')" id="btn-loss"
+        class="status-toggle flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 border-2">
+        <span class="material-symbols-outlined text-base">trending_down</span> Negativo
+      </button>
+      <button onclick="setModalStatus('zero')" id="btn-zero"
+        class="status-toggle flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 border-2">
+        <span class="material-symbols-outlined text-base">remove</span> Zerou
+      </button>
+      <button onclick="setModalStatus('off')" id="btn-off"
+        class="status-toggle flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 border-2">
+        <span class="material-symbols-outlined text-base">do_not_disturb</span> Folga
+      </button>
+    </div>
+    <div id="modalValueRow" class="px-5 pb-4">
+      <div class="bg-surface-container-low rounded-xl px-4 py-3 flex items-center gap-3">
+        <span class="font-bold text-lg" id="modalSign" style="color:#4ae183">+</span>
+        <span class="text-on-surface-variant font-bold">R$</span>
+        <input id="modalResult" type="text" placeholder="0,00"
+          inputmode="decimal" autocomplete="off"
+          class="bg-transparent text-3xl font-headline font-bold text-on-surface border-none outline-none w-full tabular-nums placeholder:text-on-surface-variant/30"
+          oninput="modalUpdateSign()"/>
+      </div>
+    </div>
+    <div class="px-5 pb-5">
+      <button onclick="saveDayModal()"
+        class="w-full py-4 rounded-xl font-headline font-bold text-base transition-all active:scale-95"
+        id="modalSaveBtn" style="background:linear-gradient(135deg,#4ae183,#009b50);color:#003919;box-shadow:0 8px 24px rgba(74,225,131,0.2)">
+        SALVAR
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: DASHBOARD ===== -->
+<div id="screen-dashboard" class="screen pb-24">
+  <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0e1320] backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="user-avatar" id="headerAvatar">
+        <span class="material-symbols-outlined text-sm text-primary flex items-center justify-center h-full">person</span>
+      </div>
+      <h1 class="text-xl font-bold tracking-tighter text-white font-headline">QUANT.LOG</h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="px-3 py-1 bg-surface-container rounded-lg">
+        <span class="text-primary font-medium tabular-nums text-sm font-label cursor-pointer hover:opacity-70 transition-opacity" id="dash-balance" onclick="openBalanceEdit()" title="Clique para editar">R$ 0,00</span>
+      </div>
+      <button onclick="toggleEditMode('dashboard')" id="edit-btn-dashboard" class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-sm">edit</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="pt-20 px-6 max-w-4xl mx-auto space-y-6">
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 p-8 rounded-xl bg-surface-container-low flex flex-col justify-between relative overflow-hidden">
+        <div class="relative z-10">
+          <p class="text-on-tertiary-container uppercase tracking-widest text-[10px] font-bold mb-2">Total Portfolio Value</p>
+          <h2 class="text-5xl font-bold font-headline tracking-tight tabular-nums text-white">
+            <input class="editable-value text-5xl font-bold font-headline tracking-tight text-white tabular-nums" data-field="portfolio-total" value="R$ 0,00" id="d-portfolio"/>
+          </h2>
+          <div class="mt-6 flex items-center gap-4">
+            <div class="flex items-center gap-1 text-primary bg-primary-container/30 px-3 py-1 rounded-full text-sm font-semibold">
+              <span class="material-symbols-outlined text-sm">trending_up</span>
+              <input class="editable-value text-primary text-sm font-semibold bg-transparent w-16" value="+0,0%" id="d-portfolio-pct"/>
+            </div>
+            <span class="text-on-surface-variant text-sm font-label">vs. mês anterior</span>
+          </div>
+        </div>
+        <div class="absolute right-0 bottom-0 opacity-20 pointer-events-none">
+          <svg fill="none" height="200" viewBox="0 0 400 200" width="400">
+            <path d="M0 150C50 130 100 180 150 140C200 100 250 120 300 80C350 40 400 60 400 20V200H0V150Z" fill="url(#g1)"></path>
+            <defs><linearGradient id="g1" x1="200" x2="200" y1="0" y2="200"><stop stop-color="#4ae183"></stop><stop offset="1" stop-color="#4ae183" stop-opacity="0"></stop></linearGradient></defs>
+          </svg>
+        </div>
+      </div>
+      <div class="p-8 rounded-xl bg-surface-container flex flex-col justify-between border-t-2 border-secondary">
+        <div>
+          <p class="text-on-tertiary-container uppercase tracking-widest text-[10px] font-bold mb-2">Lucro Líquido Mensal</p>
+          <h3 class="text-3xl font-bold font-headline tabular-nums text-primary">
+            <input class="editable-value text-3xl font-bold font-headline text-primary tabular-nums w-full" value="+R$ 0,00" id="d-monthly-profit"/>
+          </h3>
+        </div>
+        <div class="mt-8 space-y-2">
+          <p class="text-on-tertiary-container uppercase tracking-widest text-[10px] font-bold">ROI acumulado do mês</p>
+          <div class="text-3xl font-headline font-bold tabular-nums" id="d-roi-month-card" style="color:#4ae183">+0.00%</div>
+          <p class="text-[10px] text-on-tertiary-container italic" id="d-roi-bar-label">Nenhum dia lançado ainda</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="p-6 rounded-xl bg-surface-container flex flex-col items-center justify-center gap-4">
+        <div class="relative w-28 h-28 flex items-center justify-center">
+          <svg class="w-full h-full transform -rotate-90">
+            <circle class="text-surface-container-highest" cx="56" cy="56" fill="transparent" r="48" stroke="currentColor" stroke-width="8"></circle>
+            <circle class="text-primary" cx="56" cy="56" fill="transparent" r="48" stroke="currentColor" stroke-dasharray="301.59" id="d-winrate-circle" stroke-dashoffset="301.59" stroke-width="8"></circle>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <input class="editable-value text-2xl font-bold font-headline text-white tabular-nums text-center w-16" value="0%" id="d-winrate" oninput="updateWinRate(this.value)"/>
+            <span class="text-[8px] uppercase tracking-tighter text-on-surface-variant">Win Rate</span>
+          </div>
+        </div>
+        <div class="text-center">
+          <input class="editable-value text-xs text-on-surface-variant text-center" value="0 Trades / 0 Wins" id="d-trades"/>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 p-6 rounded-xl bg-surface-container relative overflow-hidden">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <h4 class="text-sm font-bold font-headline text-white">ROI do Mês</h4>
+            <p class="text-[10px] text-on-tertiary-container" id="roi-chart-label">Acumulado dia a dia</p>
+          </div>
+          <span class="material-symbols-outlined text-on-surface-variant">show_chart</span>
+        </div>
+        <div class="h-24 w-full mt-2">
+          <svg id="roi-chart-svg" class="w-full h-full overflow-visible" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <line x1="0" y1="30" x2="200" y2="30" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="p-6 rounded-xl bg-surface-container flex flex-col justify-between">
+        <div>
+          <h4 class="text-sm font-bold font-headline text-white mb-1">ROI do Mês</h4>
+          <p class="text-[10px] text-on-tertiary-container">Retorno sobre capital</p>
+        </div>
+        <div class="mt-4">
+          <div class="text-3xl font-bold font-headline tabular-nums" id="d-roi" style="color:#4ae183">+0.00%</div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-outline-variant/10">
+          <p class="text-[10px] text-on-tertiary-container mb-1">ROI Total (desde o início)</p>
+          <div class="text-base font-bold font-headline tabular-nums" id="d-roi-total" style="color:#ffb961">+0.00%</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="space-y-4 pb-4">
+      <div class="flex justify-between items-center px-2">
+        <h3 class="text-lg font-bold font-headline text-white">Log de Execução</h3>
+        <button onclick="addTrade()" class="text-primary text-xs font-bold uppercase tracking-widest hover:opacity-80 transition-opacity flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">add</span> Novo Trade
+        </button>
+      </div>
+      <div class="space-y-2" id="trade-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== SCREEN: CALENDAR ===== -->
+<div id="screen-calendar" class="screen pb-24">
+  <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0e1320]">
+    <div class="flex items-center gap-3">
+      <div class="user-avatar" id="calAvatar">
+        <span class="material-symbols-outlined text-sm text-primary flex items-center justify-center h-full">person</span>
+      </div>
+      <h1 class="text-xl font-headline font-bold tracking-tighter text-white">QUANT.LOG</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-primary font-label font-medium tabular-nums cursor-pointer hover:opacity-70 transition-opacity" id="cal-balance" onclick="openBalanceEdit()">R$ 0,00</span>
+    </div>
+  </header>
+
+  <main class="pt-20 px-4 max-w-lg mx-auto">
+    <div class="flex items-center justify-between mb-8">
+      <button onclick="prevMonth()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-colors">
+        <span class="material-symbols-outlined text-on-surface-variant">chevron_left</span>
+      </button>
+      <div class="text-center">
+        <h2 class="font-headline text-2xl font-bold tracking-tight text-white uppercase" id="cal-month-title">Maio 2026</h2>
+        <p class="text-xs font-label text-on-tertiary-container tracking-widest uppercase mt-1">Visão Mensal</p>
+      </div>
+      <button onclick="nextMonth()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-colors">
+        <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+      </button>
+    </div>
+    <div class="grid grid-cols-7 gap-1 mb-2">
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Dom</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Seg</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Ter</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Qua</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Qui</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Sex</span></div>
+      <div class="text-center py-2"><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Sáb</span></div>
+    </div>
+    <div class="grid grid-cols-7 gap-1 mb-8" id="cal-grid"></div>
+    <div class="bg-surface-container p-6 rounded-xl relative overflow-hidden mb-6">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+      <div class="relative z-10 flex items-center justify-between gap-4">
+        <div>
+          <span class="text-[10px] font-bold text-on-tertiary-container uppercase tracking-[0.2em] block mb-1">Performance Consolidada</span>
+          <h3 class="font-headline text-lg font-bold text-white uppercase">Total do Mês</h3>
+        </div>
+        <div class="flex flex-col items-end">
+          <span class="font-headline text-3xl font-bold text-primary tabular-nums" id="cal-monthly-total">+R$0,00</span>
+          <div class="flex items-center gap-1 mt-1">
+            <span class="material-symbols-outlined text-[14px] text-primary" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+            <span class="text-[10px] font-bold text-on-primary-container tabular-nums" id="cal-win-rate">— Win Rate</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-4 justify-center pb-4">
+      <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-primary"></div><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Lucro</span></div>
+      <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-error"></div><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Prejuízo</span></div>
+      <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-secondary"></div><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Hoje</span></div>
+      <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-surface-container-highest"></div><span class="text-[10px] font-bold text-on-tertiary-container uppercase">Folga</span></div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== SCREEN: REPORTS ===== -->
+<div id="screen-reports" class="screen pb-24">
+  <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0e1320]">
+    <div class="flex items-center gap-3">
+      <div class="user-avatar" id="repAvatar">
+        <span class="material-symbols-outlined text-sm text-primary flex items-center justify-center h-full">person</span>
+      </div>
+      <span class="text-xl font-bold tracking-tighter text-white font-headline">QUANT.LOG</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="text-primary font-label font-medium tabular-nums cursor-pointer hover:opacity-70 transition-opacity" id="rep-balance" onclick="openBalanceEdit()">R$ 0,00</span>
+      <button onclick="toggleEditMode('reports')" id="edit-btn-reports" class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-sm">edit</span>
+      </button>
+    </div>
+  </header>
+  <main class="pt-20 px-4 md:px-8 max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-10">
+      <div class="flex items-center gap-4">
+        <button onclick="prevYear()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+          <span class="material-symbols-outlined text-on-surface-variant">chevron_left</span>
+        </button>
+        <h1 class="text-3xl font-headline font-bold tracking-tight">Resumo <span id="report-year">2026</span></h1>
+        <button onclick="nextYear()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+          <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+        </button>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div class="p-5 rounded-xl bg-surface-container-low flex flex-col justify-between min-h-[100px]">
+        <span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider font-label">Banca Inicial</span>
+        <input class="editable-value text-xl font-headline font-bold tabular-nums mt-2" value="R$ 0,00" id="rep-inicial"/>
+      </div>
+      <div class="p-5 rounded-xl bg-surface-container-low flex flex-col justify-between min-h-[100px]">
+        <span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider font-label">Banca Final</span>
+        <input class="editable-value text-xl font-headline font-bold tabular-nums text-primary mt-2" value="R$ 0,00" id="rep-final"/>
+      </div>
+      <div class="p-5 rounded-xl bg-surface-container flex flex-col justify-between min-h-[100px] relative overflow-hidden">
+        <span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider font-label">Resultado Total</span>
+        <input class="editable-value text-xl font-headline font-bold tabular-nums text-primary mt-2" value="+0,0%" id="rep-result"/>
+      </div>
+      <div class="p-5 rounded-xl bg-surface-container flex flex-col justify-between min-h-[100px] border-t-2 border-secondary/20">
+        <span class="text-on-surface-variant text-xs font-semibold uppercase tracking-wider font-label">Lucro Anual</span>
+        <input class="editable-value text-xl font-headline font-bold tabular-nums text-secondary mt-2" value="R$ 0,00" id="rep-profit"/>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-12" id="monthly-grid"></div>
+    <div class="w-full h-56 rounded-xl bg-surface-container-low overflow-hidden relative group mb-4">
+      <div class="absolute inset-0 flex items-end px-4 gap-2" id="year-bars"></div>
+      <div class="absolute inset-0 backdrop-blur-[2px] bg-gradient-to-t from-background/80 to-transparent p-6 flex flex-col justify-between pointer-events-none">
+        <h2 class="font-headline font-bold text-xl">Projeção de Performance</h2>
+        <div class="flex gap-4">
+          <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-primary"></div><span class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Crescimento</span></div>
+          <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-secondary"></div><span class="text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Correção</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== SCREEN: SETTINGS ===== -->
+<div id="screen-settings" class="screen pb-24">
+  <header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0e1320]">
+    <div class="flex items-center gap-3">
+      <div class="user-avatar" id="setAvatar">
+        <span class="material-symbols-outlined text-sm text-primary flex items-center justify-center h-full">person</span>
+      </div>
+      <h1 class="text-xl font-bold tracking-tighter text-white font-headline">QUANT.LOG</h1>
+    </div>
+  </header>
+  <main class="pt-20 px-6 max-w-md mx-auto space-y-6">
+    <div class="mb-6">
+      <h2 class="text-2xl font-headline font-bold text-white">Configurações</h2>
+      <p class="text-on-surface-variant text-sm mt-1">Personalize seu QUANT.LOG</p>
+    </div>
+
+    <!-- User info card -->
+    <div class="bg-surface-container rounded-xl p-4 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary/20 flex-shrink-0" id="settingsAvatarBig">
+        <span class="material-symbols-outlined text-primary flex items-center justify-center h-full text-2xl">person</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-bold text-sm truncate" id="settings-username">—</p>
+        <p class="text-on-tertiary-container text-xs truncate" id="settings-email">—</p>
+      </div>
+      <button onclick="signOut()" class="flex-shrink-0 flex items-center gap-1 text-error text-xs font-bold hover:opacity-80 transition-opacity">
+        <span class="material-symbols-outlined text-sm">logout</span>
+        Sair
+      </button>
+    </div>
+
+    <div class="bg-surface-container-low rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-outline-variant/10">
+        <p class="text-xs text-on-tertiary-container uppercase tracking-widest font-bold mb-1">Banca</p>
+        <div class="flex items-center justify-between">
+          <span class="text-on-surface text-sm">Banca Atual</span>
+          <input class="bg-transparent text-primary text-sm text-right border-none outline-none w-36 tabular-nums" value="R$ 0,00" id="set-balance" onchange="updateBalance(this.value)"/>
+        </div>
+      </div>
+      <div class="p-4 border-b border-outline-variant/10">
+        <div class="flex items-center justify-between">
+          <span class="text-on-surface text-sm">Meta Mensal (R$)</span>
+          <input class="bg-transparent text-secondary text-sm text-right border-none outline-none w-36 tabular-nums" value="R$ 0,00" id="set-meta"/>
+        </div>
+      </div>
+      <div class="p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-on-surface text-sm">Moeda Padrão</span>
+          <select class="bg-transparent text-primary text-sm border-none outline-none">
+            <option>BRL (R$)</option>
+            <option>USD ($)</option>
+            <option>EUR (€)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-surface-container-low rounded-xl overflow-hidden">
+      <div class="p-4 border-b border-outline-variant/10">
+        <p class="text-xs text-on-tertiary-container uppercase tracking-widest font-bold mb-3">Dados do App</p>
+        <button onclick="exportData()" class="w-full flex items-center justify-between text-on-surface text-sm hover:text-primary transition-colors">
+          <span>Exportar todos os dados</span>
+          <span class="material-symbols-outlined text-sm">download</span>
+        </button>
+      </div>
+      <div class="p-4">
+        <button onclick="if(confirm('Apagar todos os dados?')) resetData()" class="w-full flex items-center justify-between text-error text-sm hover:opacity-80 transition-opacity">
+          <span>Resetar dados</span>
+          <span class="material-symbols-outlined text-sm">delete_forever</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Calculadora -->
+    <div class="bg-surface-container rounded-xl overflow-hidden border-t-2 border-primary/30">
+      <div class="px-5 pt-5 pb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="material-symbols-outlined text-primary text-lg">calculate</span>
+          <p class="text-sm font-headline font-bold text-white">Calculadora de Banca Mínima</p>
+        </div>
+        <p class="text-xs text-on-tertiary-container">Descubra com quanto você precisa começar para atingir sua meta</p>
+      </div>
+      <div class="px-5 pb-5 space-y-4">
+        <div class="bg-surface-container-low p-4 rounded-xl">
+          <label class="block text-on-tertiary-container text-[10px] uppercase tracking-widest font-bold mb-2">Quero ganhar por mês</label>
+          <div class="flex items-center gap-2">
+            <span class="text-on-surface-variant font-bold">R$</span>
+            <input type="number" id="calc-meta" placeholder="ex: 3000" step="100"
+              class="bg-transparent text-2xl font-headline font-bold text-on-surface border-none outline-none w-full tabular-nums placeholder:text-on-surface-variant/30"
+              oninput="calcBanca()"/>
+          </div>
+        </div>
+        <div class="bg-surface-container-low p-4 rounded-xl">
+          <label class="block text-on-tertiary-container text-[10px] uppercase tracking-widest font-bold mb-2">Minha taxa de retorno mensal estimada</label>
+          <div class="flex items-center gap-2">
+            <input type="number" id="calc-taxa" value="10" min="0.1" max="100" step="0.1"
+              class="bg-transparent text-2xl font-headline font-bold text-on-surface border-none outline-none w-full tabular-nums"
+              oninput="calcBanca()"/>
+            <span class="text-on-surface-variant font-bold text-xl">%</span>
+          </div>
+          <div class="flex gap-2 mt-3 flex-wrap">
+            <button onclick="setTaxa(5)" class="taxa-preset text-[10px] font-bold px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all">5% conservador</button>
+            <button onclick="setTaxa(10)" class="taxa-preset text-[10px] font-bold px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all">10% moderado</button>
+            <button onclick="setTaxa(20)" class="taxa-preset text-[10px] font-bold px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all">20% agressivo</button>
+            <button onclick="setTaxa(30)" class="taxa-preset text-[10px] font-bold px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all">30% especulativo</button>
+          </div>
+        </div>
+        <div id="calc-result-box" class="bg-surface-container-lowest rounded-xl p-5 border border-primary/10 hidden">
+          <p class="text-[10px] text-on-tertiary-container uppercase tracking-widest font-bold mb-3">Banca mínima necessária</p>
+          <div class="text-4xl font-headline font-bold text-primary tabular-nums mb-1" id="calc-banca-result">R$ —</div>
+          <p class="text-xs text-on-surface-variant" id="calc-banca-desc">—</p>
+          <div class="mt-4 pt-4 border-t border-outline-variant/10 space-y-3">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-on-surface-variant">Meta mensal</span>
+              <span class="text-on-surface font-bold tabular-nums" id="calc-detail-meta">—</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-on-surface-variant">Taxa de retorno</span>
+              <span class="text-primary font-bold tabular-nums" id="calc-detail-taxa">—</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-on-surface-variant">Ganho em 3 meses</span>
+              <span class="text-on-surface font-bold tabular-nums" id="calc-detail-3m">—</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-on-surface-variant">Ganho em 12 meses</span>
+              <span class="text-secondary font-bold tabular-nums" id="calc-detail-12m">—</span>
+            </div>
+          </div>
+          <div class="mt-4 pt-4 border-t border-outline-variant/10">
+            <p class="text-[10px] text-on-tertiary-container uppercase tracking-widest font-bold mb-3">Projeção com juros compostos</p>
+            <div class="flex items-end gap-1 h-16" id="compound-bars"></div>
+            <div class="flex justify-between mt-1">
+              <span class="text-[9px] text-on-tertiary-container">Mês 1</span>
+              <span class="text-[9px] text-on-tertiary-container">Mês 6</span>
+              <span class="text-[9px] text-on-tertiary-container">Mês 12</span>
+            </div>
+          </div>
+          <button onclick="usarBancaCalculada()" class="w-full mt-4 py-3 rounded-xl bg-primary/10 border border-primary/30 text-primary text-sm font-bold font-headline hover:bg-primary/20 transition-all active:scale-95">
+            USAR COMO BANCA INICIAL
+          </button>
+        </div>
+        <div id="calc-empty" class="text-center py-4 text-on-tertiary-container text-xs">
+          Preencha a meta e a taxa para calcular ↑
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-surface-container-low rounded-xl p-5">
+      <p class="text-xs text-on-tertiary-container uppercase tracking-widest font-bold mb-3">Sobre</p>
+      <p class="text-on-surface-variant text-sm">QUANT.LOG v2.0</p>
+      <p class="text-on-tertiary-container text-xs mt-1">Dados salvos na nuvem · Supabase + Google Auth</p>
+    </div>
+  </main>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-4 bg-[#161b28]/90 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
+  <button onclick="goTo('dashboard')" class="nav-btn flex flex-col items-center justify-center text-slate-500 hover:text-white transition-all relative pt-2" data-screen="dashboard">
+    <span class="material-symbols-outlined mb-1">dashboard</span>
+    <span class="text-[11px] font-semibold uppercase tracking-wider font-label">Dashboard</span>
+  </button>
+  <button onclick="goTo('calendar')" class="nav-btn flex flex-col items-center justify-center text-slate-500 hover:text-white transition-all relative pt-2" data-screen="calendar">
+    <span class="material-symbols-outlined mb-1">calendar_today</span>
+    <span class="text-[11px] font-semibold uppercase tracking-wider font-label">Calendário</span>
+  </button>
+  <button onclick="goTo('reports')" class="nav-btn flex flex-col items-center justify-center text-slate-500 hover:text-white transition-all relative pt-2" data-screen="reports">
+    <span class="material-symbols-outlined mb-1">analytics</span>
+    <span class="text-[11px] font-semibold uppercase tracking-wider font-label">Relatórios</span>
+  </button>
+  <button onclick="goTo('settings')" class="nav-btn flex flex-col items-center justify-center text-slate-500 hover:text-white transition-all relative pt-2" data-screen="settings">
+    <span class="material-symbols-outlined mb-1">settings</span>
+    <span class="text-[11px] font-semibold uppercase tracking-wider font-label">Config</span>
+  </button>
+</nav>
+
+<script>
+// ===== SUPABASE CONFIG =====
+// ATENÇÃO: Substitua pelos seus valores do Supabase
+const SUPABASE_URL = 'https://vjohmxwgqekmzehhfhxs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_f5O1G7FFjXANdtD53ayUGQ_OjkEYiKA';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let saveTimeout = null;
+
+// ===== STATE =====
+let state = {
+  currentScreen: 'dashboard',
+  currentMonth: new Date().getMonth(),
+  currentYear: new Date().getFullYear(),
+  reportYear: new Date().getFullYear(),
+  editModes: {},
+  balance: 'R$ 0,00',
+  baseBalance: 0,
+  calendarData: {},
+  trades: [],
+  monthlyData: {}
+};
+
+// ===== AUTH =====
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) showToast('Erro ao entrar: ' + error.message);
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  state = { currentScreen: 'dashboard', currentMonth: new Date().getMonth(), currentYear: new Date().getFullYear(), reportYear: new Date().getFullYear(), editModes: {}, balance: 'R$ 0,00', baseBalance: 0, calendarData: {}, trades: [], monthlyData: {} };
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('screen-login').classList.remove('hidden');
+  document.querySelector('nav').style.display = 'none';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+}
+
+function showAppScreen() {
+  document.getElementById('screen-login').classList.add('hidden');
+  document.querySelector('nav').style.display = '';
+  goTo('dashboard');
+}
+
+function updateAvatars(user) {
+  const avatarUrl = user?.user_metadata?.avatar_url;
+  const name = user?.user_metadata?.full_name || user?.email || '—';
+  const email = user?.email || '—';
+
+  // Update all avatar spots
+  ['headerAvatar','calAvatar','repAvatar','setAvatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (avatarUrl) {
+      el.innerHTML = `<img src="${avatarUrl}" alt="avatar"/>`;
+    }
+  });
+
+  // Update settings big avatar
+  const bigAvatar = document.getElementById('settingsAvatarBig');
+  if (bigAvatar && avatarUrl) {
+    bigAvatar.innerHTML = `<img src="${avatarUrl}" alt="avatar" style="width:100%;height:100%;object-fit:cover"/>`;
+  }
+
+  const usernameEl = document.getElementById('settings-username');
+  if (usernameEl) usernameEl.textContent = name;
+  const emailEl = document.getElementById('settings-email');
+  if (emailEl) emailEl.textContent = email;
+}
+
+// ===== SUPABASE DATA =====
+async function loadFromSupabase() {
+  if (!currentUser) return false;
+  const { data, error } = await sb
+    .from('user_data')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .single();
+
+  if (error || !data) return false;
+
+  if (data.base_balance) state.baseBalance = data.base_balance;
+  if (data.calendar_data) state.calendarData = data.calendar_data;
+  if (data.trades) state.trades = data.trades;
+  if (data.base_balance) {
+    const total = calcCalendarTotal();
+    const current = data.base_balance + total;
+    state.balance = 'R$ ' + current.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  return data.base_balance > 0;
+}
+
+async function saveToSupabase() {
+  if (!currentUser) return;
+  // Debounce — evita salvar múltiplas vezes em sequência
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    const { error } = await sb
+      .from('user_data')
+      .upsert({
+        user_id: currentUser.id,
+        base_balance: state.baseBalance,
+        calendar_data: state.calendarData,
+        trades: state.trades,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+    if (error) console.error('Erro ao salvar:', error);
+  }, 800);
+}
+
+// Alias para manter compatibilidade com chamadas existentes
+function saveToStorage() { saveToSupabase(); }
+
+// ===== INIT =====
+async function init() {
+  // Esconde nav enquanto carrega
+  document.querySelector('nav').style.display = 'none';
+
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (session?.user) {
+    currentUser = session.user;
+    updateAvatars(currentUser);
+    const hasSaved = await loadFromSupabase();
+    hideLoading();
+    if (hasSaved) {
+      showAppScreen();
+      updateBalance(state.balance);
+      recalcBalance();
+      renderTrades();
+      updateDashboardStats();
+    } else {
+      showAppScreen();
+      showWelcomeModal();
+    }
+  } else {
+    hideLoading();
+    showLoginScreen();
+  }
+
+  // Listen for auth changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      currentUser = session.user;
+      updateAvatars(currentUser);
+      const hasSaved = await loadFromSupabase();
+      if (hasSaved) {
+        showAppScreen();
+        updateBalance(state.balance);
+        recalcBalance();
+        renderTrades();
+        updateDashboardStats();
+      } else {
+        showAppScreen();
+        showWelcomeModal();
+      }
+    } else if (event === 'SIGNED_OUT') {
+      showLoginScreen();
+    }
+  });
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.style.display = 'none', 400);
+}
+
+function showWelcomeModal() {
+  const wm = document.getElementById('welcomeModal');
+  wm.style.display = 'flex';
+  wm.style.opacity = '1';
+  setTimeout(() => document.getElementById('welcomeInput').focus(), 300);
+}
+
+// ===== NAVIGATION =====
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  state.currentScreen = screen;
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('nav-active');
+    btn.style.color = '';
+  });
+  const active = document.querySelector(`.nav-btn[data-screen="${screen}"]`);
+  if (active) { active.classList.add('nav-active'); active.style.color = '#4ae183'; }
+  window.scrollTo(0, 0);
+  if (screen === 'calendar') renderCalendar();
+  if (screen === 'reports') { renderReports(); updateDashboardStats(); }
+  if (screen === 'dashboard') { renderTrades(); updateDashboardStats(); }
+}
+
+// ===== TOAST =====
+function showToast(msg = '✓ Salvo') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== EDIT MODE =====
+function toggleEditMode(screen) {
+  state.editModes[screen] = !state.editModes[screen];
+  const btn = document.getElementById('edit-btn-' + screen);
+  const icon = btn.querySelector('.material-symbols-outlined');
+  if (state.editModes[screen]) {
+    icon.textContent = 'done'; btn.style.color = '#4ae183';
+    showToast('Modo edição ativado');
+  } else {
+    icon.textContent = 'edit'; btn.style.color = '';
+    showToast('Alterações salvas');
+  }
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target.classList.contains('editable-value')) showToast();
+});
+
+// ===== WIN RATE CIRCLE =====
+function updateWinRate(val) {
+  const pct = parseInt(val) || 0;
+  const circumference = 301.59;
+  const offset = circumference - (pct / 100) * circumference;
+  const circle = document.getElementById('d-winrate-circle');
+  if (circle) circle.setAttribute('stroke-dashoffset', offset);
+}
+
+// ===== BALANCE CALCULATION =====
+function calcCalendarTotal() {
+  return Object.values(state.calendarData).reduce((sum, d) => {
+    if (d && typeof d.result === 'number' && d.status !== 'off') return sum + d.result;
+    return sum;
+  }, 0);
+}
+
+function recalcBalance() {
+  const total = calcCalendarTotal();
+  const current = state.baseBalance + total;
+  const formatted = 'R$ ' + current.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  ['dash-balance','cal-balance','rep-balance'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = formatted;
+  });
+  const setbal = document.getElementById('set-balance');
+  if (setbal) setbal.value = formatted;
+  state.balance = formatted;
+  updateDashboardStats();
+}
+
+function updateDashboardStats() {
+  const fmt = (n) => 'R$ ' + Math.abs(n).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  let monthTotal = 0, wins = 0, losses = 0, tradeDays = 0;
+  for (const [key, data] of Object.entries(state.calendarData)) {
+    const parts = key.split('-');
+    const ky = parseInt(parts[0]), km = parseInt(parts[1]);
+    if (ky === y && km === m && data.status !== 'off') {
+      monthTotal += data.result || 0;
+      tradeDays++;
+      if (data.status === 'profit') wins++;
+      if (data.status === 'loss') losses++;
+    }
+  }
+  const sign = monthTotal >= 0 ? '+' : '-';
+  const profitEl = document.getElementById('d-monthly-profit');
+  if (profitEl) { profitEl.value = sign + fmt(monthTotal); profitEl.style.color = monthTotal >= 0 ? '#4ae183' : '#ffb4ab'; }
+  const wr = tradeDays > 0 ? Math.round((wins / tradeDays) * 100) : 0;
+  const wrEl = document.getElementById('d-winrate');
+  if (wrEl) { wrEl.value = wr + '%'; updateWinRate(wr + '%'); }
+  const trEl = document.getElementById('d-trades');
+  if (trEl) trEl.value = tradeDays + ' dias · ' + wins + '✓ ' + losses + '✗';
+  const monthRoi = state.baseBalance > 0 ? ((monthTotal / state.baseBalance) * 100) : 0;
+  const roiColor = monthRoi >= 0 ? '#4ae183' : '#ffb4ab';
+  const roiStr = (monthRoi >= 0 ? '+' : '') + monthRoi.toFixed(2) + '%';
+  const roiEl = document.getElementById('d-roi');
+  if (roiEl) { roiEl.textContent = roiStr; roiEl.style.color = roiColor; }
+  const roiMonthCard = document.getElementById('d-roi-month-card');
+  if (roiMonthCard) { roiMonthCard.textContent = roiStr; roiMonthCard.style.color = roiColor; }
+  const roiBarLabel = document.getElementById('d-roi-bar-label');
+  if (roiBarLabel) {
+    if (tradeDays === 0) roiBarLabel.textContent = 'Nenhum dia lançado ainda';
+    else roiBarLabel.textContent = tradeDays + ' dia' + (tradeDays > 1 ? 's' : '') + ' operado' + (tradeDays > 1 ? 's' : '') + ' · ' + wins + ' positivo' + (wins !== 1 ? 's' : '');
+  }
+  const allTotal = calcCalendarTotal();
+  const roiTotal = state.baseBalance > 0 ? ((allTotal / state.baseBalance) * 100) : 0;
+  const roiTotEl = document.getElementById('d-roi-total');
+  if (roiTotEl) { roiTotEl.textContent = (roiTotal >= 0 ? '+' : '') + roiTotal.toFixed(2) + '%'; roiTotEl.style.color = roiTotal >= 0 ? '#4ae183' : '#ffb4ab'; }
+  const portfolio = state.baseBalance + allTotal;
+  const portEl = document.getElementById('d-portfolio');
+  if (portEl) portEl.value = fmt(portfolio).replace('R$ -','R$ ');
+  const portPct = state.baseBalance > 0 ? ((allTotal / state.baseBalance) * 100).toFixed(1) : '0.0';
+  const portPctEl = document.getElementById('d-portfolio-pct');
+  if (portPctEl) { portPctEl.value = (allTotal >= 0 ? '+' : '') + portPct + '%'; portPctEl.style.color = allTotal >= 0 ? '#4ae183' : '#ffb4ab'; }
+  renderRoiChart(y, m);
+  const repInicial = document.getElementById('rep-inicial');
+  if (repInicial) repInicial.value = fmt(state.baseBalance);
+  const repFinal = document.getElementById('rep-final');
+  if (repFinal) { repFinal.value = fmt(portfolio); repFinal.style.color = portfolio >= state.baseBalance ? '#4ae183' : '#ffb4ab'; }
+  const lucro = portfolio - state.baseBalance;
+  const repProfit = document.getElementById('rep-profit');
+  if (repProfit) { repProfit.value = (lucro >= 0 ? '' : '-') + fmt(lucro); repProfit.style.color = lucro >= 0 ? '#ffb961' : '#ffb4ab'; }
+  const pct = state.baseBalance > 0 ? ((lucro / state.baseBalance) * 100).toFixed(1) : '0.0';
+  const repResult = document.getElementById('rep-result');
+  if (repResult) { repResult.value = (lucro >= 0 ? '+' : '') + pct + '%'; repResult.style.color = lucro >= 0 ? '#4ae183' : '#ffb4ab'; }
+}
+
+function renderRoiChart(y, m) {
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const points = [];
+  let cum = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const data = state.calendarData[key];
+    if (data && data.status !== 'off') cum += (data.result || 0);
+    points.push(cum);
+  }
+  if (state.baseBalance <= 0 || points.length === 0) return;
+  const roiPoints = points.map(v => (v / state.baseBalance) * 100);
+  const allZero = roiPoints.every(v => v === 0);
+  if (allZero) return;
+  const maxAbs = Math.max(...roiPoints.map(Math.abs), 1);
+  const W = 200, H = 60, mid = H / 2;
+  const xStep = W / (daysInMonth - 1 || 1);
+  let pathD = '', areaD = '';
+  roiPoints.forEach((roi, i) => {
+    const x = i * xStep;
+    const y2 = mid - (roi / maxAbs) * (mid - 4);
+    if (i === 0) { pathD = `M${x},${y2}`; areaD = `M${x},${mid} L${x},${y2}`; }
+    else { pathD += ` L${x},${y2}`; areaD += ` L${x},${y2}`; }
+  });
+  const lastX = (roiPoints.length - 1) * xStep;
+  areaD += ` L${lastX},${mid} Z`;
+  const lastRoi = roiPoints[roiPoints.length - 1] || 0;
+  const color = lastRoi >= 0 ? '#4ae183' : '#ffb4ab';
+  const lastY = mid - (lastRoi / maxAbs) * (mid - 4);
+  const svg = document.getElementById('roi-chart-svg');
+  if (!svg) return;
+  svg.innerHTML = `
+    <defs><linearGradient id="roiGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <line x1="0" y1="${mid}" x2="${W}" y2="${mid}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    <path d="${areaD}" fill="url(#roiGrad)"/>
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3" fill="${color}"/>`;
+  const roiLabel = document.getElementById('roi-chart-label');
+  if (roiLabel) { roiLabel.textContent = (lastRoi >= 0 ? '+' : '') + lastRoi.toFixed(2) + '% ROI acumulado'; roiLabel.style.color = color; }
+}
+
+// ===== BALANCE UPDATE =====
+function updateBalance(val) {
+  const display = (val + '').startsWith('R$') || (val + '').startsWith('$') ? val : 'R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  ['dash-balance','cal-balance','rep-balance'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = display;
+  });
+  const setbal = document.getElementById('set-balance');
+  if (setbal) setbal.value = display;
+  state.balance = display;
+}
+
+function openBalanceEdit() {
+  const modal = document.getElementById('balanceModal');
+  const card = document.getElementById('balanceModalCard');
+  const raw = state.balance.replace(/[^0-9,.]/g, '').replace(',', '.');
+  document.getElementById('balanceInput').value = parseFloat(raw) || '';
+  modal.style.opacity = '1'; modal.style.pointerEvents = 'all';
+  card.style.transform = 'translateY(0)';
+  setTimeout(() => document.getElementById('balanceInput').focus(), 150);
+}
+
+function closeBalanceEdit() {
+  const modal = document.getElementById('balanceModal');
+  const card = document.getElementById('balanceModalCard');
+  modal.style.opacity = '0'; modal.style.pointerEvents = 'none';
+  card.style.transform = 'translateY(16px)';
+}
+
+function saveBalanceEdit() {
+  const val = parseFloat(document.getElementById('balanceInput').value) || 0;
+  if (!val) { closeBalanceEdit(); return; }
+  const totalFromCalendar = calcCalendarTotal();
+  state.baseBalance = val - totalFromCalendar;
+  const formatted = 'R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  updateBalance(formatted);
+  saveToStorage();
+  closeBalanceEdit();
+  showToast('Banca atualizada!');
+}
+
+document.getElementById('balanceModal').addEventListener('click', function(e) { if (e.target === this) closeBalanceEdit(); });
+document.getElementById('balanceInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveBalanceEdit(); });
+
+// ===== TRADES =====
+function renderTrades() {
+  const container = document.getElementById('trade-list');
+  if (!container) return;
+  if (state.trades.length === 0) {
+    container.innerHTML = `<div class="text-center py-8 text-on-tertiary-container text-sm">Nenhum trade ainda. Clique em "Novo Trade" para começar.</div>`;
+    return;
+  }
+  container.innerHTML = state.trades.map((t, i) => {
+    const iconMap = { profit: 'trending_up', loss: 'trending_down', pending: 'schedule' };
+    const colorMap = { profit: 'bg-primary/10 text-primary', loss: 'bg-error/10 text-error', pending: 'bg-surface-container-highest text-on-surface-variant' };
+    const resultColor = { profit: 'text-primary', loss: 'text-error', pending: 'text-white' };
+    return `
+    <div class="group flex items-center justify-between p-4 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-full ${colorMap[t.type]} flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined">${iconMap[t.type]}</span>
+        </div>
+        <div>
+          <p class="text-sm font-bold text-white font-label">
+            <input onchange="state.trades[${i}].asset=this.value;saveToStorage()" value="${t.asset}" class="bg-transparent border-none outline-none w-24 text-white font-bold"/>
+            <span class="text-[10px] font-normal text-on-surface-variant ml-2">${t.dir}</span>
+          </p>
+          <p class="text-[10px] text-on-tertiary-container tabular-nums">${t.time} · ${t.qty}</p>
+        </div>
+      </div>
+      <div class="text-right flex items-center gap-3">
+        <div>
+          <input onchange="state.trades[${i}].result=this.value;saveToStorage()" value="${t.result}" class="bg-transparent border-none outline-none text-sm font-bold font-label tabular-nums text-right w-24 ${resultColor[t.type]}"/>
+          <p class="text-[10px] text-on-surface-variant">${t.status}</p>
+        </div>
+        <button onclick="deleteTrade(${i})" class="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full bg-error/10 flex items-center justify-center text-error hover:bg-error/20">
+          <span class="material-symbols-outlined text-sm">delete</span>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addTrade() {
+  state.trades.unshift({ asset: 'Novo Ativo', dir: 'LONG', time: '--:--', qty: '0', result: '+R$0,00', status: 'PENDENTE', type: 'pending' });
+  renderTrades(); saveToStorage(); showToast('Trade adicionado');
+}
+
+function deleteTrade(i) {
+  state.trades.splice(i, 1);
+  renderTrades(); saveToStorage(); showToast('Trade removido');
+}
+
+// ===== CALENDAR =====
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const today = new Date();
+
+function renderCalendar() {
+  const year = state.currentYear;
+  const month = state.currentMonth;
+  document.getElementById('cal-month-title').textContent = `${MONTHS[month]} ${year}`.toUpperCase();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  let html = '';
+  for (let i = 0; i < firstDay; i++) html += `<div class="aspect-square opacity-0"></div>`;
+  let totalProfit = 0, wins = 0, tradeDays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const data = state.calendarData[key];
+    const dayOfWeek = new Date(year, month, d).getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isToday = isCurrentMonth && d === today.getDate();
+    let cellClass = 'aspect-square rounded-xl flex flex-col items-center justify-between p-2 cal-day ';
+    let dayNumClass = 'text-xs font-medium tabular-nums ';
+    let valueHtml = '';
+    if (data && data.status !== 'off') {
+      cellClass += 'bg-surface-container hover:bg-surface-container-highest cursor-pointer ';
+      dayNumClass += isToday ? 'text-secondary font-bold ' : 'text-white ';
+      if (data.status === 'profit') {
+        totalProfit += data.result; wins++; tradeDays++;
+        valueHtml = `<span class="text-[10px] font-bold text-primary tabular-nums">+R$${Math.abs(data.result).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+      } else if (data.status === 'loss') {
+        totalProfit += data.result; tradeDays++;
+        valueHtml = `<span class="text-[10px] font-bold text-error tabular-nums">-R$${Math.abs(data.result).toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+      } else if (data.status === 'zero') {
+        tradeDays++;
+        valueHtml = `<span class="text-[10px] font-bold text-on-tertiary-container tabular-nums">R$0,00</span>`;
+      }
+    } else if (isWeekend || (data && data.status === 'off')) {
+      cellClass += 'bg-surface-container-low ';
+      dayNumClass += isToday ? 'text-secondary font-bold ' : 'text-on-surface-variant ';
+      valueHtml = `<span class="text-[8px] font-bold text-on-tertiary-container leading-none text-center">FOLGA</span>`;
+    } else {
+      cellClass += 'bg-surface-container hover:bg-surface-container-highest ';
+      dayNumClass += isToday ? 'text-secondary font-bold ' : 'text-white/60 ';
+    }
+    if (isToday) cellClass += 'relative border-t-2 border-secondary ring-1 ring-secondary/30 ';
+    html += `<div class="${cellClass}" onclick="openDayModal(${d}, ${month}, ${year})">
+      <span class="${dayNumClass}">${String(d).padStart(2,'0')}</span>
+      ${valueHtml}
+    </div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+  const sign = totalProfit >= 0 ? '+' : '';
+  document.getElementById('cal-monthly-total').textContent = `${sign}R$${Math.abs(totalProfit).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+  const wr = tradeDays > 0 ? Math.round((wins / tradeDays) * 100) : 0;
+  document.getElementById('cal-win-rate').textContent = `${wr}% Win Rate`;
+}
+
+function prevMonth() {
+  state.currentMonth--;
+  if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+  renderCalendar();
+}
+function nextMonth() {
+  state.currentMonth++;
+  if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+  renderCalendar();
+}
+
+// ===== DAY MODAL =====
+const STATUS_STYLES = {
+  profit: { bg: 'rgba(74,225,131,0.15)', border: '#4ae183', color: '#4ae183' },
+  loss:   { bg: 'rgba(255,180,171,0.15)', border: '#ffb4ab', color: '#ffb4ab' },
+  zero:   { bg: 'rgba(192,198,204,0.12)', border: '#c6c6cc', color: '#c6c6cc' },
+  off:    { bg: 'rgba(48,52,66,0.6)',     border: '#45464c', color: '#80869c' },
+};
+let editingDayKey = '';
+let modalCurrentStatus = 'profit';
+
+function setModalStatus(status) {
+  modalCurrentStatus = status;
+  ['profit','loss','zero','off'].forEach(s => {
+    const btn = document.getElementById('btn-' + s);
+    const st = STATUS_STYLES[s];
+    if (s === status) {
+      btn.style.background = st.bg; btn.style.borderColor = st.border; btn.style.color = st.color;
+    } else {
+      btn.style.background = 'rgba(22,27,40,0.8)'; btn.style.borderColor = 'rgba(69,70,76,0.4)'; btn.style.color = '#80869c';
+    }
+  });
+  const valueRow = document.getElementById('modalValueRow');
+  valueRow.style.display = (status === 'off') ? 'none' : 'block';
+  const signEl = document.getElementById('modalSign');
+  if (status === 'profit') { signEl.textContent = '+'; signEl.style.color = '#4ae183'; }
+  else if (status === 'loss') { signEl.textContent = '-'; signEl.style.color = '#ffb4ab'; }
+  else { signEl.textContent = '='; signEl.style.color = '#c6c6cc'; }
+  const saveBtn = document.getElementById('modalSaveBtn');
+  if (status === 'profit') saveBtn.style.background = 'linear-gradient(135deg,#4ae183,#009b50)';
+  else if (status === 'loss') saveBtn.style.background = 'linear-gradient(135deg,#ffb4ab,#93000a)';
+  else saveBtn.style.background = '#252a37';
+  saveBtn.style.color = status === 'profit' ? '#003919' : '#dee2f4';
+}
+
+function modalUpdateSign() {
+  const signEl = document.getElementById('modalSign');
+  if (modalCurrentStatus === 'profit') signEl.textContent = '+';
+  else if (modalCurrentStatus === 'loss') signEl.textContent = '-';
+}
+
+const WEEKDAYS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+
+function parseLocaleNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = String(value).replace(/\s+/g, '').replace(/R\$/gi, '').replace(/\./g, '').replace(/,/g, '.');
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatNumberForInput(value) {
+  if (!value) return '';
+  return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+function openDayModal(d, m, y) {
+  editingDayKey = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const data = state.calendarData[editingDayKey] || { result: 0, status: 'profit', notes: '' };
+  document.getElementById('modalDayTitle').textContent = `${String(d).padStart(2,'0')} de ${MONTHS[m]}`;
+  const wd = new Date(y, m, d).getDay();
+  document.getElementById('modalDayWeekday').textContent = WEEKDAYS[wd];
+  document.getElementById('modalResult').value = data.result ? formatNumberForInput(Math.abs(data.result)) : '';
+  setModalStatus(data.status || 'profit');
+  document.getElementById('dayModal').classList.add('open');
+  setTimeout(() => { if (data.status !== 'off') document.getElementById('modalResult').focus(); }, 200);
+}
+
+function closeDayModal() { document.getElementById('dayModal').classList.remove('open'); }
+
+function saveDayModal() {
+  const rawVal = parseLocaleNumber(document.getElementById('modalResult').value);
+  const result = modalCurrentStatus === 'loss' ? -rawVal : rawVal;
+  state.calendarData[editingDayKey] = { result, status: modalCurrentStatus, notes: '' };
+  closeDayModal(); renderCalendar(); recalcBalance(); saveToStorage();
+  const sign = result >= 0 ? '+' : '';
+  showToast(result !== 0 ? sign + 'R$ ' + Math.abs(result).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' salvo!' : 'Dia salvo!');
+}
+
+document.getElementById('dayModal').addEventListener('click', function(e) { if (e.target === this) closeDayModal(); });
+
+// ===== REPORTS =====
+function getMonthStats(year, month) {
+  let total = 0, wins = 0, losses = 0, tradeDays = 0;
+  const prefix = `${year}-${String(month).padStart(2,'0')}-`;
+  for (const [key, data] of Object.entries(state.calendarData)) {
+    if (!key.startsWith(prefix)) continue;
+    if (data.status === 'off') continue;
+    total += data.result || 0; tradeDays++;
+    if (data.status === 'profit') wins++;
+    if (data.status === 'loss') losses++;
+  }
+  return { total, wins, losses, tradeDays };
+}
+
+function renderReports() {
+  const year = state.reportYear;
+  document.getElementById('report-year').textContent = year;
+  const fmt = (n) => 'R$ ' + Math.abs(n).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  let html = '';
+  let barValues = [];
+  for (let i = 0; i < 12; i++) {
+    const stats = getMonthStats(year, i);
+    barValues.push(stats.total);
+    if (stats.tradeDays === 0) {
+      const isFuture = new Date(year, i, 1) > new Date();
+      html += `<div class="p-5 rounded-xl bg-surface-container-low flex flex-col items-center justify-center min-h-[110px] ${isFuture ? 'opacity-30' : 'opacity-50'}">
+        <h3 class="font-headline font-bold text-base mb-1">${MONTHS[i]}</h3>
+        <span class="text-on-tertiary-container text-xs font-label italic">${isFuture ? 'Futuro' : 'Sem dados'}</span>
+      </div>`;
+      continue;
+    }
+    const isProfit = stats.total >= 0;
+    const roi = state.baseBalance > 0 ? ((stats.total / state.baseBalance) * 100).toFixed(1) : '0.0';
+    const wr = stats.tradeDays > 0 ? Math.round((stats.wins / stats.tradeDays) * 100) : 0;
+    const borderClass = !isProfit ? 'border-t-2 border-error/60' : 'border-t-2 border-primary/40';
+    const roiColor = isProfit ? '#4ae183' : '#ffb4ab';
+    html += `<div class="p-5 rounded-xl bg-surface-container-low hover:bg-surface-container transition-all duration-200 ${borderClass}">
+      <div class="flex justify-between items-start mb-3">
+        <h3 class="font-headline font-bold text-base">${MONTHS[i]}</h3>
+        <span class="text-xs font-bold tabular-nums font-headline" style="color:${roiColor}">${isProfit ? '+' : '-'}${Math.abs(roi)}%</span>
+      </div>
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-xs"><span class="text-on-surface-variant">${isProfit ? 'Lucro' : 'Prejuízo'}</span><span class="font-bold tabular-nums" style="color:${roiColor}">${isProfit ? '' : '-'}${fmt(stats.total)}</span></div>
+        <div class="flex justify-between text-xs"><span class="text-on-surface-variant">Win Rate</span><span class="font-medium text-on-surface tabular-nums">${wr}%</span></div>
+        <div class="flex justify-between text-xs"><span class="text-on-surface-variant">Dias operados</span><span class="font-medium text-on-surface tabular-nums">${stats.tradeDays}</span></div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('monthly-grid').innerHTML = html;
+  const maxAbs = Math.max(...barValues.map(Math.abs), 1);
+  let bars = '';
+  barValues.forEach(v => {
+    const h = Math.max(4, (Math.abs(v) / maxAbs) * 80);
+    const color = v > 0 ? 'rgba(74,225,131,0.4)' : v < 0 ? 'rgba(255,180,171,0.4)' : 'rgba(48,52,66,0.4)';
+    bars += `<div class="flex-1 rounded-t-lg transition-all duration-500" style="height:${h}%;background:${color}"></div>`;
+  });
+  document.getElementById('year-bars').innerHTML = bars;
+}
+
+function prevYear() { state.reportYear--; renderReports(); }
+function nextYear() { state.reportYear++; renderReports(); }
+
+// ===== EXPORT =====
+function exportData() {
+  const json = JSON.stringify({ calendarData: state.calendarData, trades: state.trades }, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'quant_log_export.json'; a.click();
+  showToast('Dados exportados');
+}
+
+function resetData() {
+  state.calendarData = {}; state.trades = {}; state.baseBalance = 0; state.balance = 'R$ 0,00';
+  saveToSupabase();
+  renderTrades(); renderCalendar(); renderReports();
+  updateBalance('R$ 0,00'); updateDashboardStats();
+  showWelcomeModal(); showToast('Dados resetados');
+}
+
+// ===== CALCULADORA =====
+function setTaxa(val) { document.getElementById('calc-taxa').value = val; calcBanca(); }
+
+function calcBanca() {
+  const meta = parseFloat(document.getElementById('calc-meta').value) || 0;
+  const taxa = parseFloat(document.getElementById('calc-taxa').value) || 0;
+  const resultBox = document.getElementById('calc-result-box');
+  const emptyBox = document.getElementById('calc-empty');
+  if (!meta || !taxa) { resultBox.classList.add('hidden'); emptyBox.classList.remove('hidden'); return; }
+  const banca = meta / (taxa / 100);
+  resultBox.classList.remove('hidden'); emptyBox.classList.add('hidden');
+  const fmt = (n) => 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('calc-banca-result').textContent = fmt(banca);
+  document.getElementById('calc-banca-desc').textContent = 'Com R$ ' + banca.toLocaleString('pt-BR', {maximumFractionDigits:0}) + ' e ' + taxa + '% ao mês você atinge sua meta';
+  document.getElementById('calc-detail-meta').textContent = fmt(meta);
+  document.getElementById('calc-detail-taxa').textContent = taxa + '% a.m.';
+  document.getElementById('calc-detail-3m').textContent = fmt(meta * 3);
+  const lucro12 = banca * Math.pow(1 + taxa / 100, 12) - banca;
+  document.getElementById('calc-detail-12m').textContent = fmt(lucro12);
+  let barsHtml = '';
+  let maxVal = 0;
+  const vals = [];
+  for (let i = 1; i <= 12; i++) { const v = banca * Math.pow(1 + taxa / 100, i) - banca; vals.push(v); if (v > maxVal) maxVal = v; }
+  vals.forEach((v, i) => {
+    const h = maxVal > 0 ? Math.max(4, (v / maxVal) * 100) : 4;
+    const color = i < 3 ? 'bg-primary/40' : i < 9 ? 'bg-primary/60' : 'bg-primary';
+    barsHtml += '<div class="flex-1 ' + color + ' rounded-t transition-all duration-700" style="height:' + h + '%"></div>';
+  });
+  document.getElementById('compound-bars').innerHTML = barsHtml;
+}
+
+function usarBancaCalculada() {
+  const meta = parseFloat(document.getElementById('calc-meta').value) || 0;
+  const taxa = parseFloat(document.getElementById('calc-taxa').value) || 0;
+  if (!meta || !taxa) return;
+  const banca = meta / (taxa / 100);
+  const totalFromCalendar = calcCalendarTotal();
+  state.baseBalance = banca - totalFromCalendar;
+  const formatted = 'R$ ' + banca.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  updateBalance(formatted); saveToStorage();
+  showToast('Banca inicial definida!');
+  setTimeout(() => goTo('dashboard'), 800);
+}
+
+// ===== WELCOME =====
+function saveWelcome() {
+  const val = parseFloat(document.getElementById('welcomeInput').value) || 0;
+  const modal = document.getElementById('welcomeModal');
+  modal.style.opacity = '0'; modal.style.pointerEvents = 'none';
+  setTimeout(() => modal.style.display = 'none', 400);
+  if (val > 0) {
+    state.baseBalance = val;
+    const formatted = 'R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    updateBalance(formatted); saveToStorage();
+    updateDashboardStats();
+  }
+}
+
+document.getElementById('welcomeInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') saveWelcome(); });
+
+// ===== PWA INSTALL =====
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installAppBtn');
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault(); deferredInstallPrompt = event;
+  if (installBtn) installBtn.classList.add('show');
+});
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null; installBtn.classList.remove('show');
+  });
+}
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  if (installBtn) installBtn.classList.remove('show');
+  if (typeof showToast === 'function') showToast('QUANT.LOG instalado com sucesso!');
+});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+}
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>
